@@ -1,5 +1,7 @@
 import socket
-import threading
+from threading import Thread
+import sys
+import random
 from datetime import datetime
 from colorama import Fore, init, Back
 
@@ -33,17 +35,82 @@ colors = [
     Fore.MAGENTA,
     Fore.YELLOW,
 ]
-
-
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind((SERVER_IP, SERVER_PORT))
-server_socket.listen(1)
-print("Server is running and listening on port:", SERVER_PORT)
-connection, address = server_socket.accept()
-print(address, "has joined.")
+server_socket.listen()
 
-message = "/exit"
-connection.send(message.encode())
 
-connection.close()
-server_socket.close()
+def send_all(message):
+    for client in clients:
+        client.send(message.encode())
+
+def send_to(message, sender):
+    message_to_send = f"{clients[sender].color}{clients[sender].name}: {message}{Fore.RESET}"
+    print(message_to_send)
+    for client in clients:
+        if client != sender:
+            client.send(message_to_send.encode())
+
+
+def messages(client):
+    while True:
+        try:
+            message = client.recv(1024).decode()
+            if message == "/exit":
+                print(f"{clients[client].name} left the server")
+                client.close()
+                del clients[client]
+                break
+            elif message.startswith("/username"):
+                clients[client].name = message.split()[1]
+            else:
+                send_to(message, client)
+        except socket.error:
+            if client in clients:
+                client.close()
+                del clients[client]
+            break
+
+
+def server_commands():
+    deleted_clients = []
+
+    while True:
+        command = input()
+
+        if command == "/exit":
+            print("Exit the server")
+
+            for client in clients:
+                client.send("SHUTDOWN".encode())
+                deleted_clients.append(client)
+
+            for client in deleted_clients:
+                del clients[client]
+
+            server_socket.close()
+            sys.exit()
+
+        elif command == "/number":
+            print("Number of clients:", len(clients))
+
+
+def main():
+    while True:
+        client, address = server_socket.accept()
+
+        if client not in clients:
+            client_color = random.choice(colors)
+            clients[client] = User("", datetime.now(), 0, "active", client_color)
+
+        print("Connection from", address, "has been established!")
+
+        thread = Thread(target=messages, args=(client,))
+        thread.start()
+
+
+if __name__ == "__main__":
+    print("Server is listening...")
+    thread = Thread(target=server_commands)
+    thread.start()
+    main()
