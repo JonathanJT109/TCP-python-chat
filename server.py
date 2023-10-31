@@ -7,17 +7,15 @@ from colorama import Fore, init, Back
 
 
 class User:
-    def __init__(self, name, active_time, ban_counter, status, color):
-        self.user_name = ""
-        self.password = ""
+    def __init__(self, name, ban_counter, status, color):
         self.name = name
-        self.active_time = active_time
         self.color = color
         self.status = status
         self.ban_counter = ban_counter
 
 
 init()
+socket_opened = True
 
 SERVER_IP = "127.0.0.1"
 SERVER_PORT = 5555
@@ -44,8 +42,10 @@ def send_all(message):
     for client in clients:
         client.send(message.encode())
 
+
 def send_to(message, sender):
-    message_to_send = f"{clients[sender].color}{clients[sender].name}: {message}{Fore.RESET}"
+    date_now = datetime.now().strftime("%m-%d-%Y %H:%M:%S")
+    message_to_send = f"{clients[sender].color}[{date_now}] {clients[sender].name}: {message}{Fore.RESET}"
     print(message_to_send)
     for client in clients:
         if client != sender:
@@ -63,6 +63,8 @@ def messages(client):
                 break
             elif message.startswith("/username"):
                 clients[client].name = message.split()[1]
+            elif message == "/number":
+                print("Number of clients:", len(clients))
             else:
                 send_to(message, client)
         except socket.error:
@@ -73,6 +75,7 @@ def messages(client):
 
 
 def server_commands():
+    global socket_opened
     deleted_clients = []
 
     while True:
@@ -101,7 +104,7 @@ def main():
 
         if client not in clients:
             client_color = random.choice(colors)
-            clients[client] = User("", datetime.now(), 0, "active", client_color)
+            clients[client] = User("", 0, "active", client_color)
 
         print("Connection from", address, "has been established!")
 

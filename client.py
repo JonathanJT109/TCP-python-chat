@@ -18,6 +18,7 @@ def receive():
             if message == "SHUTDOWN":
                 print("The server has shut down!")
                 client_socket.close()
+                socket_open = False
                 sys.exit()
             print(message)
         except socket.error:
@@ -50,14 +51,15 @@ while True:
 receive_thread = Thread(target=receive)
 receive_thread.start()
 
-while True:
-    user_input = input("-> ")
+while client_socket:
+    user_input = input()
 
     if user_input == "/exit":
         print("Exit the chat room")
         client_socket.send(user_input.encode())
         socket_open = False
-        client_socket.close()
-        sys.exit()
-
+        break
+    
     client_socket.send(user_input.encode())
+
+client_socket.close()
